@@ -5,11 +5,10 @@
  */
 package com.alexoree.jenkins;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLConnection;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
@@ -120,9 +119,52 @@ public class Main {
     }
 
     private static void download(String localName, String remoteUrl) throws Exception {
-        URL website = new URL(remoteUrl);
-        ReadableByteChannel rbc = Channels.newChannel(website.openStream());
-        FileOutputStream fos = new FileOutputStream(new File(localName));
-        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+        URL obj = new URL(remoteUrl);
+        HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
+        conn.setReadTimeout(5000);
+        
+        System.out.println("Request URL ... " + remoteUrl);
+
+        boolean redirect = false;
+
+        // normally, 3xx is redirect
+        int status = conn.getResponseCode();
+        if (status != HttpURLConnection.HTTP_OK) {
+            if (status == HttpURLConnection.HTTP_MOVED_TEMP
+                    || status == HttpURLConnection.HTTP_MOVED_PERM
+                    || status == HttpURLConnection.HTTP_SEE_OTHER)
+                redirect = true;
+        }
+
+        if (redirect) {
+
+            // get redirect url from "location" header field
+            String newUrl = conn.getHeaderField("Location");
+
+            // get the cookie if need, for login
+            String cookies = conn.getHeaderField("Set-Cookie");
+
+            // open the new connnection again
+            conn = (HttpURLConnection) new URL(newUrl).openConnection();
+
+
+            System.out.println("Redirect to URL : " + newUrl);
+
+        }
+
+        byte[] buffer=new byte[2048];
+
+        FileOutputStream baos = new FileOutputStream(localName);
+        InputStream inputStream = conn.getInputStream();
+        int totalBytes = 0;
+        int read = inputStream.read(buffer);
+        while (read > 0){
+            totalBytes+=read;
+            baos.write(buffer,0,read);
+            read = inputStream.read(buffer);
+        }
+        System.out.println("Retrieved " + totalBytes + "bytes");
+
+
     }
 }

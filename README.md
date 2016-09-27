@@ -8,11 +8,12 @@ A tool to pull down the latest and greatest from jenkins for offline updating
 
 # Run it to sync the files locally
 
-`cd target`
-`java -jar jenkins-sync-1.0.0-SNAPSHOT-jar-with-dependencies.jar`
+````
+cd target
+java -jar jenkins-sync-1.0.0-SNAPSHOT-jar-with-dependencies.jar
+````
 
-now swivel chair the following files
+now swivel chair the file `jenkinsSync.zip` to where ever your jenkins instance is. Ideally to a local web server of some
+sort.
 
-`jenkinsSync.zip`
-
-To where ever your jenkins instance is. Enjoy
+Enjoy
