@@ -45,7 +45,7 @@ public class Main {
           ps = new ArrayList<String>();
           doc = Jsoup.connect(plugins).get();
           for (Element file : doc.select("td a")) {
-               System.out.println(file.attr("href"));
+               //System.out.println(file.attr("href"));
                if (file.attr("href").endsWith(".json")) {
                     ps.add(file.attr("href"));
                }
@@ -57,10 +57,8 @@ public class Main {
      }
 
      private static void download(String localName, String remoteUrl) throws Exception {
-
           URL website = new URL(remoteUrl);
           ReadableByteChannel rbc = Channels.newChannel(website.openStream());
-
           FileOutputStream fos = new FileOutputStream(new File(localName));
           fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
      }
