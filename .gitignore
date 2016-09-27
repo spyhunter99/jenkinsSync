@@ -10,3 +10,5 @@ buildNumber.properties
 /target/
 /latest/
 /*.json
+/.idea
+*.iml
