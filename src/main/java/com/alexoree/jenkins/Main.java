@@ -70,9 +70,9 @@ public class Main {
         //download the plugins
         for (int i = 0; i < ps.size(); i++) {
             System.out.println("[" + i + "/" + ps.size() + "] downloading " + plugins + ps.get(i));
-            download(root.getAbsolutePath() + "/latest/" + ps.get(i), plugins + ps.get(i));
+            String outputFile = download(root.getAbsolutePath() + "/latest/" + ps.get(i), plugins + ps.get(i));
 
-            FileInputStream fis = new FileInputStream(root.getAbsolutePath() + "/latest/" + ps.get(i));
+            FileInputStream fis = new FileInputStream(outputFile);
             // begin writing a new ZIP entry, positions the stream to the start of the entry data
             zos.putNextEntry(new ZipEntry(plugins + ps.get(i)));
             int length;
@@ -118,11 +118,11 @@ public class Main {
         zos.close();
     }
 
-    private static void download(String localName, String remoteUrl) throws Exception {
+    private static String download(String localName, String remoteUrl) throws Exception {
         URL obj = new URL(remoteUrl);
         HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
         conn.setReadTimeout(5000);
-        
+
         System.out.println("Request URL ... " + remoteUrl);
 
         boolean redirect = false;
@@ -147,9 +147,23 @@ public class Main {
             // open the new connnection again
             conn = (HttpURLConnection) new URL(newUrl).openConnection();
 
-
+            String version = newUrl.substring(newUrl.lastIndexOf("/",newUrl.lastIndexOf("/")-1)+1, newUrl.lastIndexOf("/"));
+            String pluginname = localName.substring(localName.lastIndexOf("/")+1);
+            String ext="";
+            if (pluginname.endsWith(".war"))
+                 ext = ".war";
+            else ext = ".hpi";
+            
+            pluginname = pluginname.replace(ext, "");
+            localName = localName.replace(pluginname + ext, "/download/plugins/" + pluginname + "/" + version + "/");
+            new File(localName).mkdirs();
+            localName+= pluginname + ext;
             System.out.println("Redirect to URL : " + newUrl);
 
+        }
+        if (new File(localName).exists()){
+             System.out.println(localName + " exists, skipping");
+             return localName;
         }
 
         byte[] buffer=new byte[2048];
@@ -165,6 +179,7 @@ public class Main {
         }
         System.out.println("Retrieved " + totalBytes + "bytes");
 
+        return localName;
 
     }
 }
