@@ -74,7 +74,7 @@ public class Main {
 
             FileInputStream fis = new FileInputStream(outputFile);
             // begin writing a new ZIP entry, positions the stream to the start of the entry data
-            zos.putNextEntry(new ZipEntry(plugins + ps.get(i)));
+            zos.putNextEntry(new ZipEntry(outputFile.replace(root.getAbsolutePath(), "").replace("updates.jenkins-ci.org/", "").replace("https:/", "")));
             int length;
             while ((length = fis.read(buffer)) > 0) {
                 zos.write(buffer, 0, length);
