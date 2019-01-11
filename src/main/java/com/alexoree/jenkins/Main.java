@@ -124,6 +124,11 @@ public class Main {
     }
 
     private static String download(String localName, String remoteUrl) throws Exception {
+        if (new File(localName).exists()) {
+            System.out.println(localName + " exists, skipping");
+            return "SKIP";
+        }
+        
         URL obj = new URL(remoteUrl);
         HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
         conn.setReadTimeout(5000);
@@ -169,10 +174,7 @@ public class Main {
             System.out.println("Redirect to URL : " + newUrl);
 
         }
-        if (new File(localName).exists()) {
-            System.out.println(localName + " exists, skipping");
-            return "SKIP";
-        }
+        
 
         byte[] buffer = new byte[2048];
 
