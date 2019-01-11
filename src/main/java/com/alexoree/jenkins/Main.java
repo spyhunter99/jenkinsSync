@@ -124,71 +124,97 @@ public class Main {
     }
 
     private static String download(String localName, String remoteUrl) throws Exception {
-        
-        
+
         URL obj = new URL(remoteUrl);
-        HttpURLConnection conn = (HttpURLConnection) obj.openConnection();
-        conn.setReadTimeout(5000);
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) obj.openConnection();
+            conn.setReadTimeout(5000);
 
-        System.out.println("Request URL ... " + remoteUrl);
+            System.out.println("Request URL ... " + remoteUrl);
 
-        boolean redirect = false;
+            boolean redirect = false;
 
-        // normally, 3xx is redirect
-        int status = conn.getResponseCode();
-        if (status != HttpURLConnection.HTTP_OK) {
-            if (status == HttpURLConnection.HTTP_MOVED_TEMP
-                    || status == HttpURLConnection.HTTP_MOVED_PERM
-                    || status == HttpURLConnection.HTTP_SEE_OTHER) {
-                redirect = true;
-            }
-        }
-
-        if (redirect) {
-
-            // get redirect url from "location" header field
-            String newUrl = conn.getHeaderField("Location");
-
-            // get the cookie if need, for login
-            String cookies = conn.getHeaderField("Set-Cookie");
-
-            // open the new connnection again
-            conn = (HttpURLConnection) new URL(newUrl).openConnection();
-
-            String version = newUrl.substring(newUrl.lastIndexOf("/", newUrl.lastIndexOf("/") - 1) + 1, newUrl.lastIndexOf("/"));
-            String pluginname = localName.substring(localName.lastIndexOf("/") + 1);
-            String ext = "";
-            if (pluginname.endsWith(".war")) {
-                ext = ".war";
-            } else {
-                ext = ".hpi";
+            // normally, 3xx is redirect
+            int status = conn.getResponseCode();
+            if (status != HttpURLConnection.HTTP_OK) {
+                if (status == HttpURLConnection.HTTP_MOVED_TEMP
+                        || status == HttpURLConnection.HTTP_MOVED_PERM
+                        || status == HttpURLConnection.HTTP_SEE_OTHER) {
+                    redirect = true;
+                }
             }
 
-            pluginname = pluginname.replace(ext, "");
-            localName = localName.replace(pluginname + ext, "/download/plugins/" + pluginname + "/" + version + "/");
-            new File(localName).mkdirs();
-            localName += pluginname + ext;
-            System.out.println("Redirect to URL : " + newUrl);
+            if (redirect) {
 
+                // get redirect url from "location" header field
+                String newUrl = conn.getHeaderField("Location");
+
+                // get the cookie if need, for login
+                String cookies = conn.getHeaderField("Set-Cookie");
+
+                // open the new connnection again
+                conn = (HttpURLConnection) new URL(newUrl).openConnection();
+
+                String version = newUrl.substring(newUrl.lastIndexOf("/", newUrl.lastIndexOf("/") - 1) + 1, newUrl.lastIndexOf("/"));
+                String pluginname = localName.substring(localName.lastIndexOf("/") + 1);
+                String ext = "";
+                if (pluginname.endsWith(".war")) {
+                    ext = ".war";
+                } else {
+                    ext = ".hpi";
+                }
+
+                pluginname = pluginname.replace(ext, "");
+                localName = localName.replace(pluginname + ext, "/download/plugins/" + pluginname + "/" + version + "/");
+                new File(localName).mkdirs();
+                localName += pluginname + ext;
+                System.out.println("Redirect to URL : " + newUrl);
+
+            }
+            if (new File(localName).exists()) {
+                System.out.println(localName + " exists, skipping");
+                return "SKIP";
+            }
+
+            byte[] buffer = new byte[2048];
+
+            int retries = 3;
+            while (retries > 0) {
+                FileOutputStream baos = null;
+                InputStream inputStream = null;
+                try {
+                    retries--;
+                    baos = new FileOutputStream(localName);
+                    inputStream = conn.getInputStream();
+                    int totalBytes = 0;
+                    int read = inputStream.read(buffer);
+                    while (read > 0) {
+                        totalBytes += read;
+                        baos.write(buffer, 0, read);
+                        read = inputStream.read(buffer);
+                    }
+                    inputStream.close();
+                    baos.close();
+                    System.out.println("Retrieved " + totalBytes + "bytes");
+                    break;
+                } catch (Exception ex) {
+                    System.out.println(remoteUrl + " " + newUrl + " failed " + ex.getMessage());
+                } finally {
+                    try {
+                        inputStream.close();
+                    } catch (Exception e) {
+                    }
+                    try {
+                        baos.close();
+                    } catch (Exception e) {
+                    }
+                }
+            }
+        } catch (Exception ex) {
+        } finally {
+            conn.disconnect();
         }
-        if (new File(localName).exists()) {
-            System.out.println(localName + " exists, skipping");
-            return "SKIP";
-        }
-
-        byte[] buffer = new byte[2048];
-
-        FileOutputStream baos = new FileOutputStream(localName);
-        InputStream inputStream = conn.getInputStream();
-        int totalBytes = 0;
-        int read = inputStream.read(buffer);
-        while (read > 0) {
-            totalBytes += read;
-            baos.write(buffer, 0, read);
-            read = inputStream.read(buffer);
-        }
-        System.out.println("Retrieved " + totalBytes + "bytes");
-
         return localName;
 
     }
