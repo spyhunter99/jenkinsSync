@@ -154,6 +154,7 @@ public class Main {
                 String cookies = conn.getHeaderField("Set-Cookie");
 
                 // open the new connnection again
+                conn.disconnect();
                 conn = (HttpURLConnection) new URL(newUrl).openConnection();
 
                 String version = newUrl.substring(newUrl.lastIndexOf("/", newUrl.lastIndexOf("/") - 1) + 1, newUrl.lastIndexOf("/"));
@@ -199,7 +200,7 @@ public class Main {
                     System.out.println("Retrieved " + totalBytes + "bytes");
                     break;
                 } catch (Exception ex) {
-                    System.out.println(remoteUrl + " " + newUrl + " failed " + ex.getMessage());
+                    System.out.println(remoteUrl + " failed " + ex.getMessage());
                 } finally {
                     try {
                         inputStream.close();
