@@ -26,21 +26,22 @@ import org.jsoup.nodes.Element;
  */
 public class Main {
 
-    final static int WAIT=5000;
+    final static int WAIT = 5000;
 
     public static void main(String[] args) throws Exception {
         // create Options object
         Options options = new Options();
 
         options.addOption("t", false, "throttle the downloads, waits 5 seconds in between each d/l");
+        options.addOption("nozip", false, "skip zip (don't zip the output)");
 
         // automatically generate the help statement
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp( "jenkins-sync", options );
-
+        formatter.printHelp("jenkins-sync", options);
 
         CommandLineParser parser = new DefaultParser();
-        CommandLine cmd = parser.parse( options, args);
+        CommandLine cmd = parser.parse(options, args);
+        boolean zipOutput = !cmd.hasOption("nozip");
         boolean throttle = cmd.hasOption("t");
 
         String plugins = "https://updates.jenkins-ci.org/latest/";
@@ -57,8 +58,6 @@ public class Main {
         //https://updates.jenkins-ci.org/latest/AdaptivePlugin.hpi
         new File("./latest").mkdirs();
 
-
-
         //output zip file
         String zipFile = "jenkinsSync.zip";
         // create byte buffer
@@ -66,24 +65,29 @@ public class Main {
         FileOutputStream fos = new FileOutputStream(zipFile);
         ZipOutputStream zos = new ZipOutputStream(fos);
 
-
         //download the plugins
         for (int i = 0; i < ps.size(); i++) {
             System.out.println("[" + i + "/" + ps.size() + "] downloading " + plugins + ps.get(i));
             String outputFile = download(root.getAbsolutePath() + "/latest/" + ps.get(i), plugins + ps.get(i));
-
-            FileInputStream fis = new FileInputStream(outputFile);
-            // begin writing a new ZIP entry, positions the stream to the start of the entry data
-            zos.putNextEntry(new ZipEntry(outputFile.replace(root.getAbsolutePath(), "").replace("updates.jenkins-ci.org/", "").replace("https:/", "")));
-            int length;
-            while ((length = fis.read(buffer)) > 0) {
-                zos.write(buffer, 0, length);
+            if ("SKIP".equals(outputFile)) {
+                continue;
             }
-            zos.closeEntry();
-            fis.close();
-            if (throttle)
+            if (zipOutput) {
+                FileInputStream fis = new FileInputStream(outputFile);
+                // begin writing a new ZIP entry, positions the stream to the start of the entry data
+                zos.putNextEntry(new ZipEntry(outputFile.replace(root.getAbsolutePath(), "").replace("updates.jenkins-ci.org/", "").replace("https:/", "")));
+                int length;
+                while ((length = fis.read(buffer)) > 0) {
+                    zos.write(buffer, 0, length);
+                }
+                zos.closeEntry();
+                fis.close();
+                new File(root.getAbsolutePath() + "/latest/" + ps.get(i)).deleteOnExit();
+            }
+            if (throttle) {
                 Thread.sleep(WAIT);
-            new File(root.getAbsolutePath() + "/latest/" + ps.get(i)).deleteOnExit();
+            }
+
         }
 
         //download the json metadata
@@ -98,21 +102,22 @@ public class Main {
         }
         for (int i = 0; i < ps.size(); i++) {
             download(root.getAbsolutePath() + "/" + ps.get(i), plugins + ps.get(i));
-
-            FileInputStream fis = new FileInputStream(root.getAbsolutePath() + "/" + ps.get(i));
-            // begin writing a new ZIP entry, positions the stream to the start of the entry data
-            zos.putNextEntry(new ZipEntry(plugins + ps.get(i)));
-            int length;
-            while ((length = fis.read(buffer)) > 0) {
-                zos.write(buffer, 0, length);
+            if (zipOutput) {
+                FileInputStream fis = new FileInputStream(root.getAbsolutePath() + "/" + ps.get(i));
+                // begin writing a new ZIP entry, positions the stream to the start of the entry data
+                zos.putNextEntry(new ZipEntry(plugins + ps.get(i)));
+                int length;
+                while ((length = fis.read(buffer)) > 0) {
+                    zos.write(buffer, 0, length);
+                }
+                zos.closeEntry();
+                fis.close();
+                new File(root.getAbsolutePath() + "/" + ps.get(i)).deleteOnExit();
             }
-            zos.closeEntry();
-            fis.close();
-            new File(root.getAbsolutePath() + "/" + ps.get(i)).deleteOnExit();
-            if (throttle)
+            if (throttle) {
                 Thread.sleep(WAIT);
+            }
         }
-
 
         // close the ZipOutputStream
         zos.close();
@@ -132,8 +137,9 @@ public class Main {
         if (status != HttpURLConnection.HTTP_OK) {
             if (status == HttpURLConnection.HTTP_MOVED_TEMP
                     || status == HttpURLConnection.HTTP_MOVED_PERM
-                    || status == HttpURLConnection.HTTP_SEE_OTHER)
+                    || status == HttpURLConnection.HTTP_SEE_OTHER) {
                 redirect = true;
+            }
         }
 
         if (redirect) {
@@ -147,34 +153,36 @@ public class Main {
             // open the new connnection again
             conn = (HttpURLConnection) new URL(newUrl).openConnection();
 
-            String version = newUrl.substring(newUrl.lastIndexOf("/",newUrl.lastIndexOf("/")-1)+1, newUrl.lastIndexOf("/"));
-            String pluginname = localName.substring(localName.lastIndexOf("/")+1);
-            String ext="";
-            if (pluginname.endsWith(".war"))
-                 ext = ".war";
-            else ext = ".hpi";
-            
+            String version = newUrl.substring(newUrl.lastIndexOf("/", newUrl.lastIndexOf("/") - 1) + 1, newUrl.lastIndexOf("/"));
+            String pluginname = localName.substring(localName.lastIndexOf("/") + 1);
+            String ext = "";
+            if (pluginname.endsWith(".war")) {
+                ext = ".war";
+            } else {
+                ext = ".hpi";
+            }
+
             pluginname = pluginname.replace(ext, "");
             localName = localName.replace(pluginname + ext, "/download/plugins/" + pluginname + "/" + version + "/");
             new File(localName).mkdirs();
-            localName+= pluginname + ext;
+            localName += pluginname + ext;
             System.out.println("Redirect to URL : " + newUrl);
 
         }
-        if (new File(localName).exists()){
-             System.out.println(localName + " exists, skipping");
-             return localName;
+        if (new File(localName).exists()) {
+            System.out.println(localName + " exists, skipping");
+            return "SKIP";
         }
 
-        byte[] buffer=new byte[2048];
+        byte[] buffer = new byte[2048];
 
         FileOutputStream baos = new FileOutputStream(localName);
         InputStream inputStream = conn.getInputStream();
         int totalBytes = 0;
         int read = inputStream.read(buffer);
-        while (read > 0){
-            totalBytes+=read;
-            baos.write(buffer,0,read);
+        while (read > 0) {
+            totalBytes += read;
+            baos.write(buffer, 0, read);
             read = inputStream.read(buffer);
         }
         System.out.println("Retrieved " + totalBytes + "bytes");
