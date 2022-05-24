@@ -31,7 +31,6 @@ jobs:
       fail-fast: false
       matrix:
         language: ['java']
-        jpa: ['openjpa','hibernate']
     steps:
     - name: Setup Java 8
       uses: actions/setup-java@v1.4.3
@@ -48,11 +47,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
      
-    - name: Install icedtea
-      run: sudo apt-get install -y icedtea-netx
-
     - name: javabuild
-      run: mvn -B install -Pgithubactiondist -P${{ matrix.jpa }}
+      run: mvn -B install
       
 
   analyze1:
