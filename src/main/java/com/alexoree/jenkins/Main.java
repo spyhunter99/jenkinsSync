@@ -8,9 +8,6 @@ package com.alexoree.jenkins;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -47,10 +44,12 @@ public class Main {
         String plugins = "https://updates.jenkins-ci.org/latest/";
         List<String> ps = new ArrayList<String>();
         Document doc = Jsoup.connect(plugins).get();
-        for (Element file : doc.select("td a")) {
-            //System.out.println(file.attr("href"));
-            if (file.attr("href").endsWith(".hpi") || file.attr("href").endsWith(".war")) {
-                ps.add(file.attr("href"));
+        for (Element file : doc.select("a")) {
+            if (file.hasClass("version")) {
+                //System.out.println(file.attr("href"));
+                if (file.attr("href").endsWith(".hpi") || file.attr("href").endsWith(".war")) {
+                    ps.add(file.attr("href"));
+                }
             }
         }
 
